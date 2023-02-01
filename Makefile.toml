@@ -1,0 +1,92 @@
+[config]
+skip_core_tasks = true
+
+[env]
+OVMF_DIR = "/Users/nop/ovmf"
+
+[tasks.build]
+dependencies = [
+  {name = "build", path = "sikikernel"},
+  {name = "build", path = "sikiloader"},
+]
+run_task = "disk"
+
+[tasks.run]
+dependencies = ["build"]
+run_task = "qemu"
+
+[tasks.disk]
+run_task = {name = ["disk-rm", "disk-create", "disk-mount", "disk-copy"], fork = true, cleanup_task = "disk-umount"}
+
+[tasks.disk-rm]
+ignore_errors = true
+script = '''
+rm disk.img
+'''
+
+[tasks.disk-create]
+script = '''
+echo "disk-create"
+qemu-img create -f raw disk.img 200M
+mkfs.fat -n "sikikernel" -s 2 -f 2 -F 32 -R 32 disk.img
+'''
+
+[tasks.disk-mount.linux]
+script = '''
+echo "disk-mount.linux"
+mkdir -p ./mnt
+sudo mount -o loop disk.img ./mnt
+'''
+
+[tasks.disk-mount.mac]
+script = '''
+#!/usr/bin/env bash
+echo "disk-mount.mac"
+mkdir -p ./mnt
+disk=$(hdiutil attach -nomount disk.img)
+echo $disk
+mount_msdos $disk ./mnt
+'''
+
+[tasks.disk-copy]
+script = '''
+mkdir -p ./mnt/EFI/BOOT
+cp ./sikiloader/target/x86_64-unknown-uefi/debug/sikiloader.efi ./mnt/EFI/BOOT/BOOTX64.EFI
+cp ./sikikernel/target/x86_64-unknown-none/debug/sikikernel ./mnt/kernel.elf
+'''
+
+[tasks.qemu]
+dependencies = ["disk"]
+script = '''
+qemu-system-x86_64 \
+    -m 1G \
+    -drive if=pflash,format=raw,file=${OVMF_DIR}/OVMF_CODE.fd \
+    -drive if=pflash,format=raw,file=${OVMF_DIR}/OVMF_VARS.fd \
+    -drive format=raw,media=disk,index=0,file=disk.img \
+    -device nec-usb-xhci,id=xhci \
+    -device usb-mouse -device usb-kbd \
+    -device isa-debug-exit \
+    -monitor stdio \
+    -display gtk
+'''
+
+[tasks.qemu.mac]
+dependencies = ["disk"]
+script = '''
+qemu-system-x86_64 \
+    -m 1G \
+    -bios ${OVMF_DIR}/OVMF.fd \
+    -drive format=raw,media=disk,index=0,file=disk.img \
+    -device nec-usb-xhci,id=xhci \
+    -device usb-mouse -device usb-kbd \
+    -device isa-debug-exit \
+    -monitor stdio \
+'''
+
+[tasks.disk-umount]
+ignore_errors = true
+script = '''
+umount ./mnt && rmdir ./mnt
+hdiutil detach /dev/disk4
+'''
+
