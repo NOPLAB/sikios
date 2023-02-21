@@ -1,6 +1,6 @@
 [config]
-skip_core_tasks = true
 default_to_workspace = false
+skip_core_tasks = true
 
 [env]
 OVMF_DIR = "/Users/nop/ovmf"
@@ -68,7 +68,7 @@ mount_msdos $disk ./mnt
 [tasks.disk-copy]
 script = '''
 mkdir -p ./mnt/EFI/BOOT
-cp ./sikiloader/target/x86_64-unknown-uefi/debug/sikiloader.efi ./mnt/EFI/BOOT/BOOTX64.EFI
+cp ./target/x86_64-unknown-uefi/debug/sikiloader.efi ./mnt/EFI/BOOT/BOOTX64.EFI
 cp ./kernel.elf ./mnt/kernel.elf
 '''
 
@@ -119,4 +119,3 @@ script = '''
 umount ./mnt && rmdir ./mnt
 hdiutil detach /dev/disk4
 '''
-

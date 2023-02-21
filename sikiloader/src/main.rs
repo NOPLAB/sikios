@@ -13,6 +13,7 @@ use core::u8;
 
 use alloc::vec::Vec;
 
+use lib::SikiOSArguments;
 use lib::{FrameBufferInfo, ModeInfo};
 
 use goblin::elf::{self};
@@ -104,16 +105,15 @@ fn load_file(dir: &mut Directory, file_name: &uefi::CStr16) -> RegularFile {
     .unwrap()
 }
 
-fn entry_kernel(entry: u64, frame_buffer_info: &mut FrameBufferInfo, gop_info: &mut ModeInfo) {
-    let _kernel_main: extern "sysv64" fn(fb: *mut FrameBufferInfo, mi: *mut ModeInfo) =
-        unsafe { mem::transmute(entry) };
+fn entry_kernel(entry: u64, args: &SikiOSArguments) {
+    let _kernel_main: extern "sysv64" fn(args: &SikiOSArguments) = unsafe { mem::transmute(entry) };
 
     println!("Exit Boot Services");
     exit_boot_services();
 
     println!("Enter Entry Point");
 
-    _kernel_main(frame_buffer_info, gop_info);
+    _kernel_main(args);
 }
 
 #[entry]
@@ -213,11 +213,8 @@ fn main(handle: Handle, mut system_table: SystemTable<Boot>) -> Status {
             .unwrap()
     };
 
-    let mut graphics_output_info: lib::ModeInfo = graphics_output.current_mode_info().into();
-    println!(
-        "H: {}, V: {}",
-        graphics_output_info.hor_res, graphics_output_info.ver_res
-    );
+    let mut mode_info: lib::ModeInfo = graphics_output.current_mode_info().into();
+    println!("H: {}, V: {}", mode_info.hor_res, mode_info.ver_res);
 
     let mut frame_buffer = graphics_output.frame_buffer();
     let mut frame_buffer_info = FrameBufferInfo {
@@ -225,7 +222,12 @@ fn main(handle: Handle, mut system_table: SystemTable<Boot>) -> Status {
         size: frame_buffer.size(),
     };
 
-    entry_kernel(elf.entry, &mut frame_buffer_info, &mut graphics_output_info);
+    let mut args = SikiOSArguments {
+        frame_buffer_info: frame_buffer_info,
+        mode_info: mode_info,
+    };
+
+    entry_kernel(elf.entry, &args);
 
     Status::SUCCESS
 }

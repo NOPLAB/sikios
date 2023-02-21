@@ -3,6 +3,13 @@
 
 #[repr(C)]
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub struct SikiOSArguments {
+    pub frame_buffer_info: FrameBufferInfo,
+    pub mode_info: ModeInfo,
+}
+
+#[repr(C)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct FrameBufferInfo {
     pub fb: *mut u8,
     pub size: usize,
@@ -33,7 +40,7 @@ pub struct ModeInfo {
     pub hor_res: u32,
     pub ver_res: u32,
     pub format: PixelFormat,
-    pub mask: PixelBitmask,
+    pub mask: Option<PixelBitmask>,
     pub stride: u32,
 }
 
@@ -47,17 +54,22 @@ impl From<uefi::proto::console::gop::ModeInfo> for ModeInfo {
             uefi::proto::console::gop::PixelFormat::Rgb => PixelFormat::Rgb,
         };
 
+        let pixel_bit_mask = match item.pixel_bitmask() {
+            None => None,
+            _ => Some(PixelBitmask {
+                red: item.pixel_bitmask().unwrap().red,
+                green: item.pixel_bitmask().unwrap().green,
+                blue: item.pixel_bitmask().unwrap().blue,
+                reserved: item.pixel_bitmask().unwrap().reserved,
+            }),
+        };
+
         ModeInfo {
             version: 0,
             hor_res: item.resolution().0 as u32,
             ver_res: item.resolution().1 as u32,
             format: pixel_format,
-            mask: PixelBitmask {
-                red: item.pixel_bitmask().unwrap().red,
-                green: item.pixel_bitmask().unwrap().green,
-                blue: item.pixel_bitmask().unwrap().blue,
-                reserved: item.pixel_bitmask().unwrap().reserved,
-            },
+            mask: pixel_bit_mask,
             stride: item.stride() as u32,
         }
     }

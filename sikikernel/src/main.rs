@@ -4,20 +4,16 @@
 
 extern crate alloc;
 
-use alloc::alloc::Layout;
-use core::alloc::GlobalAlloc;
-use core::arch::asm;
-use core::cell::RefCell;
-use core::cell::UnsafeCell;
-use core::panic::PanicInfo;
-use core::ptr;
+use core::{arch::asm, cell::RefCell, panic::PanicInfo};
+
+mod allocator;
 
 use critical_section::Mutex;
 use once_cell::sync::Lazy;
 
 use uart_16550::SerialPort;
 
-use lib::{FrameBufferInfo, ModeInfo};
+use lib::{FrameBufferInfo, ModeInfo, SikiOSArguments};
 
 mod ascii_font;
 mod critical_section_impl;
@@ -40,44 +36,6 @@ static SERIAL_PORT: Lazy<Mutex<RefCell<SerialPort>>> = Lazy::new(|| {
 fn print_serial(s: &str) {
     for i in s.as_bytes() {
         critical_section::with(|cs| SERIAL_PORT.borrow_ref_mut(cs).send(*i))
-    }
-}
-
-// グローバルメモリアロケータの宣言
-// ユーザはメモリ領域の`[0x2000_0100, 0x2000_0200]`がプログラムの他の部分で使用されないことを
-// 保証しなければなりません
-#[global_allocator]
-static HEAP: BumpPointerAlloc = BumpPointerAlloc {
-    head: UnsafeCell::new(0x2000_0100),
-    end: 0x2000_0200,
-};
-
-// *シングル*コアシステム用のポインタを増加するだけのアロケータ
-struct BumpPointerAlloc {
-    head: UnsafeCell<usize>,
-    end: usize,
-}
-
-unsafe impl Sync for BumpPointerAlloc {}
-
-unsafe impl GlobalAlloc for BumpPointerAlloc {
-    unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
-        let head = self.head.get();
-
-        let align = layout.align();
-        let res = *head % align;
-        let start = if res == 0 { *head } else { *head + align - res };
-        if start + align > self.end {
-            // ヌルポインタはメモリ不足の状態を知らせます
-            ptr::null_mut()
-        } else {
-            *head = start + align;
-            start as *mut u8
-        }
-    }
-
-    unsafe fn dealloc(&self, _: *mut u8, _: Layout) {
-        // このアロケータはメモリを解放しません
     }
 }
 
@@ -114,15 +72,18 @@ fn panic(_info: &PanicInfo) -> ! {
 }
 
 #[no_mangle] // don't mangle the name of this function
-pub extern "sysv64" fn _kernel_main(fb: *mut FrameBufferInfo, mi: *mut ModeInfo) -> ! {
+pub extern "sysv64" fn _kernel_main(args: &SikiOSArguments) -> ! {
     let mut graphics = Graphics {
-        frame_buffer_info: fb,
-        mode_info: mi,
+        frame_buffer_info: args.frame_buffer_info,
+        mode_info: args.mode_info,
     };
 
     let (width, height) = graphics.get_resolve();
 
     print_serial("Hello, World!!!!!!\n");
+    let mut buf = [0u8; 256];
+    let _s: &str = write_to::show(&mut buf, format_args!("width:{}\n", width)).unwrap();
+    print_serial(_s);
 
     graphics.draw_rect(0, 0, width, height, Color(0, 0, 0));
 
