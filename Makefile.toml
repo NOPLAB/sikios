@@ -1,19 +1,36 @@
 [config]
 skip_core_tasks = true
+default_to_workspace = false
 
 [env]
 OVMF_DIR = "/Users/nop/ovmf"
 
 [tasks.build]
 dependencies = [
+  {name = "build", path = "lib"},
   {name = "build", path = "sikikernel"},
   {name = "build", path = "sikiloader"},
+]
+run_task = "disk"
+
+[tasks.check]
+dependencies = [
+  {name = "check", path = "lib"},
+  {name = "check", path = "sikikernel"},
+  {name = "check", path = "sikiloader"},
 ]
 run_task = "disk"
 
 [tasks.run]
 dependencies = ["build"]
 run_task = "qemu"
+
+[tasks.clean]
+dependencies = [
+  {name = "clean", path = "lib"},
+  {name = "clean", path = "sikikernel"},
+  {name = "clean", path = "sikiloader"},
+]
 
 [tasks.disk]
 run_task = {name = ["disk-rm", "disk-create", "disk-mount", "disk-copy"], fork = true, cleanup_task = "disk-umount"}
@@ -52,7 +69,7 @@ mount_msdos $disk ./mnt
 script = '''
 mkdir -p ./mnt/EFI/BOOT
 cp ./sikiloader/target/x86_64-unknown-uefi/debug/sikiloader.efi ./mnt/EFI/BOOT/BOOTX64.EFI
-cp ./sikikernel/target/x86_64-unknown-none/debug/sikikernel ./mnt/kernel.elf
+cp ./kernel.elf ./mnt/kernel.elf
 '''
 
 [tasks.qemu]
@@ -80,8 +97,21 @@ qemu-system-x86_64 \
     -device nec-usb-xhci,id=xhci \
     -device usb-mouse -device usb-kbd \
     -device isa-debug-exit \
-    -monitor stdio \
+    -serial stdio \
 '''
+
+# [tasks.qemu.mac]
+# dependencies = ["disk"]
+# script = '''
+# qemu-system-x86_64 \
+#     -m 1G \
+#     -bios ${OVMF_DIR}/OVMF.fd \
+#     -drive format=raw,media=disk,index=0,file=disk.img \
+#     -device nec-usb-xhci,id=xhci \
+#     -device usb-mouse -device usb-kbd \
+#     -device isa-debug-exit \
+#     -monitor stdio \
+# '''
 
 [tasks.disk-umount]
 ignore_errors = true
