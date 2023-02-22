@@ -13,8 +13,8 @@ use core::u8;
 
 use alloc::vec::Vec;
 
-use lib::SikiOSArguments;
-use lib::{FrameBufferInfo, ModeInfo};
+use lib::{FrameBufferInfo, MemoryDescriptor, MemoryMap, ModeInfo};
+use lib::{SikiOSArguments, MEMORY_MAP_SIZE};
 
 use goblin::elf::{self};
 
@@ -35,10 +35,18 @@ fn get_memory_map_size(boot_services: &BootServices) -> MemoryMapSize {
     boot_services.memory_map_size()
 }
 
-fn get_memory_map<'a>(
-    boot_services: &'a BootServices,
-    buffer: &'a mut Vec<u8>,
-) -> MemoryMapIter<'a> {
+// fn get_memory_map<'a>(
+//     boot_services: &'a BootServices,
+//     buffer: &'a mut Vec<u8>,
+// ) -> MemoryMapIter<'a> {
+//     println!("Get Memory Map");
+
+//     let (_, memory_map_iter) = boot_services.memory_map(buffer).unwrap();
+
+//     memory_map_iter
+// }
+
+fn get_memory_map<'a>(boot_services: &'a BootServices, buffer: &'a mut [u8]) -> MemoryMapIter<'a> {
     println!("Get Memory Map");
 
     let (_, memory_map_iter) = boot_services.memory_map(buffer).unwrap();
@@ -127,8 +135,10 @@ fn main(handle: Handle, mut system_table: SystemTable<Boot>) -> Status {
     let mut root_dir = simple_file_system.open_volume().unwrap();
 
     let memory_map_size = get_memory_map_size(boot_services).map_size;
-    let mut buffer = vec![0; memory_map_size + 1024];
-    let memory_map_iter = get_memory_map(boot_services, &mut buffer);
+    print!("Memory Map Size: {}\n", memory_map_size + 1024);
+    // let mut memory_map_buffer = vec![0 as u8; memory_map_size + 1024];
+    let mut memory_map_buffer = [0 as u8; 4000];
+    let memory_map_iter = get_memory_map(boot_services, &mut memory_map_buffer);
     print_memory_map(&memory_map_iter);
     save_memory_map(&memory_map_iter, &mut root_dir);
 
@@ -137,19 +147,19 @@ fn main(handle: Handle, mut system_table: SystemTable<Boot>) -> Status {
     let mut elf_file = load_file(&mut root_dir, cstr16!("\\kernel.elf"));
 
     // ファイルサイズを取得
-    let _elf_file_info = elf_file.get_boxed_info::<FileInfo>().unwrap();
-    let _elf_file_size = _elf_file_info.file_size() as usize;
+    let elf_file_info = elf_file.get_boxed_info::<FileInfo>().unwrap();
+    let elf_file_size = elf_file_info.file_size() as usize;
 
-    println!("Kernel File Size: {}", _elf_file_size);
+    println!("Kernel File Size: {}", elf_file_size);
 
     // バッファを作成
-    let mut _elf_buffer = vec![0; _elf_file_size];
+    let mut elf_buffer = vec![0; elf_file_size];
 
     // バッファに読み込み
-    elf_file.read(&mut _elf_buffer).unwrap();
+    elf_file.read(&mut elf_buffer).unwrap();
 
     // goblinに変換
-    let elf = elf::Elf::parse(&_elf_buffer).unwrap();
+    let elf = elf::Elf::parse(&elf_buffer).unwrap();
 
     // ロードする位置の最小値と最大値を求める destは目標の位置という意味
     let mut dest_first = usize::MAX;
@@ -190,7 +200,7 @@ fn main(handle: Handle, mut system_table: SystemTable<Boot>) -> Status {
         let fsize = ph.p_filesz as usize;
         let msize = ph.p_memsz as usize;
         let dest = unsafe { from_raw_parts_mut(ph.p_vaddr as *mut u8, msize) };
-        dest[..fsize].copy_from_slice(&_elf_buffer[ofs..ofs + fsize]);
+        dest[..fsize].copy_from_slice(&elf_buffer[ofs..ofs + fsize]);
         dest[fsize..].fill(0);
     }
 
@@ -213,7 +223,7 @@ fn main(handle: Handle, mut system_table: SystemTable<Boot>) -> Status {
             .unwrap()
     };
 
-    let mut mode_info: lib::ModeInfo = graphics_output.current_mode_info().into();
+    let mut mode_info: ModeInfo = graphics_output.current_mode_info().into();
     println!("H: {}, V: {}", mode_info.hor_res, mode_info.ver_res);
 
     let mut frame_buffer = graphics_output.frame_buffer();
@@ -222,9 +232,23 @@ fn main(handle: Handle, mut system_table: SystemTable<Boot>) -> Status {
         size: frame_buffer.size(),
     };
 
-    let mut args = SikiOSArguments {
+    let mut memory_map: [MemoryDescriptor; MEMORY_MAP_SIZE] = [Default::default(); MEMORY_MAP_SIZE];
+
+    for (i, value) in memory_map_iter.clone().enumerate() {
+        memory_map[i].memory_type = value.ty.into();
+        memory_map[i].physical_start = value.phys_start;
+        memory_map[i].virtual_start = value.virt_start;
+        memory_map[i].number_of_pages = value.page_count;
+        memory_map[i].attribute = value.att.bits();
+    }
+
+    let args = SikiOSArguments {
         frame_buffer_info: frame_buffer_info,
         mode_info: mode_info,
+        memory_map: MemoryMap {
+            memory_map: memory_map,
+            len: memory_map_iter.len(),
+        },
     };
 
     entry_kernel(elf.entry, &args);

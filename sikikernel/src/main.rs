@@ -8,12 +8,13 @@ use core::{arch::asm, cell::RefCell, panic::PanicInfo};
 
 mod allocator;
 
+use alloc::vec;
 use critical_section::Mutex;
 use once_cell::sync::Lazy;
 
 use uart_16550::SerialPort;
 
-use lib::{FrameBufferInfo, ModeInfo, SikiOSArguments};
+use lib::{MemoryType, SikiOSArguments};
 
 mod ascii_font;
 mod critical_section_impl;
@@ -81,14 +82,74 @@ pub extern "sysv64" fn _kernel_main(args: &SikiOSArguments) -> ! {
     let (width, height) = graphics.get_resolve();
 
     print_serial("Hello, World!!!!!!\n");
-    let mut buf = [0u8; 256];
-    let _s: &str = write_to::show(&mut buf, format_args!("width:{}\n", width)).unwrap();
-    print_serial(_s);
 
     graphics.draw_rect(0, 0, width, height, Color(0, 0, 0));
 
     graphics.draw_rect(10, 10, 20, 20, Color(255, 255, 255));
     graphics.draw_fonts(40, 40, "Hello, World", Color(255, 0, 255));
+
+    for i in 0..args.memory_map.len {
+        let mut buf = [0u8; 256];
+        let _s: &str = write_to::show(
+            &mut buf,
+            format_args!(
+                "{}, {:?}, {:08x}, {:x}, {:x}\n",
+                i,
+                args.memory_map.memory_map[i].memory_type,
+                args.memory_map.memory_map[i].physical_start,
+                args.memory_map.memory_map[i].number_of_pages,
+                args.memory_map.memory_map[i].attribute
+            ),
+        )
+        .unwrap();
+        print_serial(_s);
+        graphics.draw_fonts(40, 60 + i as u32 * 20, _s, Color(255, 255, 255));
+    }
+
+    let mut total_pages = 0;
+    for i in 0..args.memory_map.len {
+        if args.memory_map.memory_map[i].memory_type != MemoryType::CONVENTIONAL {
+            continue;
+        }
+
+        let mut buf = [0u8; 256];
+        let _s: &str = write_to::show(
+            &mut buf,
+            format_args!(
+                "{}, {:?}, {:08x}, {:x}, {:x}\n",
+                i,
+                args.memory_map.memory_map[i].memory_type,
+                args.memory_map.memory_map[i].physical_start,
+                args.memory_map.memory_map[i].number_of_pages,
+                args.memory_map.memory_map[i].attribute
+            ),
+        )
+        .unwrap();
+        print_serial(_s);
+
+        total_pages += args.memory_map.memory_map[i].number_of_pages;
+    }
+
+    let mut buf = [0u8; 256];
+    let _s: &str = write_to::show(
+        &mut buf,
+        format_args!("total: {}Mib\n", total_pages * 4096 / 1024 / 1024),
+    )
+    .unwrap();
+    print_serial(_s);
+
+    let mut v = vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+    v.push(2);
+
+    for a in v.into_iter() {
+        let mut buf = [0u8; 256];
+        let _s: &str = write_to::show(&mut buf, format_args!("{}\n", a)).unwrap();
+        print_serial(_s);
+    }
+
+    loop {
+        unsafe { asm!("hlt") }
+    }
 
     let mut pci = PCI::new();
     pci.initialize();
