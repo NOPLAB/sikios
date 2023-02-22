@@ -16,3 +16,5 @@ Cargo.lock
 disk.img
 
 .DS_Store
+
+kernel.elf
