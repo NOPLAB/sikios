@@ -9,5 +9,6 @@
         "**/Thumbs.db": true,
         "**/target": true,
     },
-    "commentTranslate.hover.enabled": false
+    "commentTranslate.hover.enabled": false,
+    // "rust-analyzer.check.allTargets": false,
 }

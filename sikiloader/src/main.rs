@@ -246,7 +246,7 @@ fn main(handle: Handle, mut system_table: SystemTable<Boot>) -> Status {
         frame_buffer_info: frame_buffer_info,
         mode_info: mode_info,
         memory_map: MemoryMap {
-            memory_map: memory_map,
+            map: memory_map,
             len: memory_map_iter.len(),
         },
     };

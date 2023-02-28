@@ -119,7 +119,7 @@ impl From<uefi::proto::console::gop::ModeInfo> for ModeInfo {
 #[repr(C)]
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct MemoryMap {
-    pub memory_map: [MemoryDescriptor; MEMORY_MAP_SIZE],
+    pub map: [MemoryDescriptor; MEMORY_MAP_SIZE],
     pub len: usize,
 }
 

@@ -1,20 +1,20 @@
 #![no_std] // don't link the Rust standard library
 #![no_main] // disable all Rust-level entry points
 #![feature(lang_items)]
+#![feature(strict_provenance)]
 
 extern crate alloc;
 
+use allocator::ALLOC;
 use core::{arch::asm, cell::RefCell, panic::PanicInfo};
+use lib::{MemoryType, SikiOSArguments};
 
 mod allocator;
+use alloc::{boxed::Box, vec};
 
-use alloc::vec;
 use critical_section::Mutex;
 use once_cell::sync::Lazy;
-
 use uart_16550::SerialPort;
-
-use lib::{MemoryType, SikiOSArguments};
 
 mod ascii_font;
 mod critical_section_impl;
@@ -45,25 +45,9 @@ fn print_serial(s: &str) {
 fn panic(_info: &PanicInfo) -> ! {
     print_serial("kernel is panic!!!\n");
 
-    if let Some(error) = _info.payload().downcast_ref::<&str>() {
-        let mut buf = [0u8; 256];
-        let _s: &str = write_to::show(&mut buf, format_args!("{}\n", error)).unwrap();
-        print_serial(_s);
-    } else {
-        print_serial("no info\n");
-    }
-
-    if let Some(location) = _info.location() {
-        let mut buf = [0u8; 256];
-        let _s: &str = write_to::show(
-            &mut buf,
-            format_args!("{}, {}\n", location.file(), location.line()),
-        )
-        .unwrap();
-        print_serial(_s);
-    } else {
-        print_serial("no info\n");
-    }
+    let mut buf = [0u8; 512];
+    let _s: &str = write_to::show(&mut buf, format_args!("message: {}\n", _info)).unwrap();
+    print_serial(_s);
 
     loop {
         unsafe {
@@ -78,6 +62,12 @@ pub extern "sysv64" fn _kernel_main(args: &SikiOSArguments) -> ! {
         frame_buffer_info: args.frame_buffer_info,
         mode_info: args.mode_info,
     };
+
+    ALLOC.initialize(args.memory_map);
+    // let mut buf = [0u8; 256];
+    // let _s: &str =
+    //     write_to::show(&mut buf, format_args!("{}\n", unsafe { ALLOC.head.get() })).unwrap();
+    // print_serial(_s);
 
     let (width, height) = graphics.get_resolve();
 
@@ -95,10 +85,10 @@ pub extern "sysv64" fn _kernel_main(args: &SikiOSArguments) -> ! {
             format_args!(
                 "{}, {:?}, {:08x}, {:x}, {:x}\n",
                 i,
-                args.memory_map.memory_map[i].memory_type,
-                args.memory_map.memory_map[i].physical_start,
-                args.memory_map.memory_map[i].number_of_pages,
-                args.memory_map.memory_map[i].attribute
+                args.memory_map.map[i].memory_type,
+                args.memory_map.map[i].physical_start,
+                args.memory_map.map[i].number_of_pages,
+                args.memory_map.map[i].attribute
             ),
         )
         .unwrap();
@@ -108,7 +98,7 @@ pub extern "sysv64" fn _kernel_main(args: &SikiOSArguments) -> ! {
 
     let mut total_pages = 0;
     for i in 0..args.memory_map.len {
-        if args.memory_map.memory_map[i].memory_type != MemoryType::CONVENTIONAL {
+        if args.memory_map.map[i].memory_type != MemoryType::CONVENTIONAL {
             continue;
         }
 
@@ -118,16 +108,16 @@ pub extern "sysv64" fn _kernel_main(args: &SikiOSArguments) -> ! {
             format_args!(
                 "{}, {:?}, {:08x}, {:x}, {:x}\n",
                 i,
-                args.memory_map.memory_map[i].memory_type,
-                args.memory_map.memory_map[i].physical_start,
-                args.memory_map.memory_map[i].number_of_pages,
-                args.memory_map.memory_map[i].attribute
+                args.memory_map.map[i].memory_type,
+                args.memory_map.map[i].physical_start,
+                args.memory_map.map[i].number_of_pages,
+                args.memory_map.map[i].attribute
             ),
         )
         .unwrap();
         print_serial(_s);
 
-        total_pages += args.memory_map.memory_map[i].number_of_pages;
+        total_pages += args.memory_map.map[i].number_of_pages;
     }
 
     let mut buf = [0u8; 256];
@@ -138,14 +128,34 @@ pub extern "sysv64" fn _kernel_main(args: &SikiOSArguments) -> ! {
     .unwrap();
     print_serial(_s);
 
-    let mut v = vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-    v.push(2);
+    // ----ALLOC TEST----
 
-    for a in v.into_iter() {
-        let mut buf = [0u8; 256];
-        let _s: &str = write_to::show(&mut buf, format_args!("{}\n", a)).unwrap();
-        print_serial(_s);
+    {
+        let mut v = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+
+        let mut v2 = vec![10, 9, 8, 7, 6, 5, 4, 3, 2, 1];
+        v.push(2);
+
+        let b = Box::new([0u8; 4096]);
     }
+
+    // for a in v.into_iter() {
+    //     let mut buf = [0u8; 256];
+    //     let _s: &str = write_to::show(&mut buf, format_args!("{}\n", a)).unwrap();
+    //     print_serial(_s);
+    // }
+    // for a in v2.into_iter() {
+    //     let mut buf = [0u8; 256];
+    //     let _s: &str = write_to::show(&mut buf, format_args!("{}\n", a)).unwrap();
+    //     print_serial(_s);
+    // }
+    // for a in b.iter() {
+    //     let mut buf = [0u8; 256];
+    //     let _s: &str = write_to::show(&mut buf, format_args!("{}\n", a)).unwrap();
+    //     print_serial(_s);
+    // }
+
+    // ----ALLOC TEST----
 
     loop {
         unsafe { asm!("hlt") }
