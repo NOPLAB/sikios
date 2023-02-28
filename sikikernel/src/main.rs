@@ -133,10 +133,12 @@ pub extern "sysv64" fn _kernel_main(args: &SikiOSArguments) -> ! {
     {
         let mut v = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 
-        let mut v2 = vec![10, 9, 8, 7, 6, 5, 4, 3, 2, 1];
+        let v2 = vec![10, 9, 8, 7, 6, 5, 4, 3, 2, 1];
         v.push(2);
 
         let b = Box::new([0u8; 4096]);
+        let c = Box::new([0u8; 4096 * 100]);
+        let d = Box::new([0u8; 4096 * 100]);
     }
 
     // for a in v.into_iter() {

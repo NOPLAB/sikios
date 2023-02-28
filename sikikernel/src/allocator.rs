@@ -27,7 +27,6 @@ pub static ALLOC: SimpleAlloc = SimpleAlloc {
         using_flag: bitarr![0; ALLOC_FRAME_NUM],
         once_frame_size: ALLOC_FRAME_SIZE,
         frame_num: ALLOC_FRAME_NUM,
-        all_memory_size: ALLOC_FRAME_SIZE * ALLOC_FRAME_SIZE,
         offset: 0,
     }),
     initialized: UnsafeCell::new(false),
@@ -95,7 +94,7 @@ unsafe impl GlobalAlloc for SimpleAlloc {
             .get()
             .as_mut()
             .unwrap()
-            .use_frame_with_physical_size(layout.align())
+            .use_frame_with_physical_size(layout.size())
             .unwrap()) as *mut u8
     }
 
@@ -104,7 +103,7 @@ unsafe impl GlobalAlloc for SimpleAlloc {
             .get()
             .as_mut()
             .unwrap()
-            .free_frame_with_physical_address(ptr.addr() as usize, layout.align())
+            .free_frame_with_physical_address(ptr.addr() as usize, layout.size())
     }
 }
 
@@ -112,10 +111,16 @@ type UsingFlag = BitArr!(for ALLOC_FRAME_NUM);
 
 #[derive(Debug, Default)]
 pub struct MemoryFrame {
+    // 使用中フラグ
     using_flag: UsingFlag,
+
+    // 一つあたりのフレームサイズ
     once_frame_size: usize,
+
+    // フレームの総数
     frame_num: usize,
-    all_memory_size: usize,
+
+    // フレームが置かれるアドレスオフセット
     offset: usize,
 }
 
@@ -164,6 +169,17 @@ impl MemoryFrame {
     pub fn use_frame_with_physical_size(&mut self, size: usize) -> Result<usize, &'static str> {
         // 必要なフレーム数をメモリサイズから計算
         let need_frame_size = size.div_ceil(&self.once_frame_size);
+
+        let mut buf = [0u8; 256];
+        let _s: &str = write_to::show(
+            &mut buf,
+            format_args!(
+                "physical size: {}, need frame size: {}\n",
+                size, need_frame_size
+            ),
+        )
+        .unwrap();
+        print_serial(_s);
 
         Ok(self.use_frame(need_frame_size)? * self.once_frame_size + self.offset)
     }
