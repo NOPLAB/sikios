@@ -1,6 +1,6 @@
 [workspace]
 members = [
-    "sikikernel",
-    "sikiloader",
-    "lib",
+  "sikikernel",
+  "sikiloader",
+  "lib",
 ]

@@ -7,7 +7,7 @@ OVMF_DIR = "/Users/nop/ovmf"
 
 [tasks.build]
 dependencies = [
-  {name = "build", path = "lib"},
+  # {name = "build", path = "lib"},
   {name = "build", path = "sikikernel"},
   {name = "build", path = "sikiloader"},
 ]
@@ -15,7 +15,7 @@ run_task = "disk"
 
 [tasks.check]
 dependencies = [
-  {name = "check", path = "lib"},
+  # {name = "check", path = "lib"},
   {name = "check", path = "sikikernel"},
   {name = "check", path = "sikiloader"},
 ]

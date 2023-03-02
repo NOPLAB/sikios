@@ -1,12 +1,15 @@
+# cargo-features = ["per-package-target"]
+
 [package]
+edition = "2021"
 name = "sikiloader"
 version = "0.1.0"
-edition = "2021"
+# forced-target = "x86_64-unknown-uefi"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-lib = {path = "../lib", features = ["uefi-feature"] }
-uefi = { version = "0.19.0", features = ["alloc", "logger"] }
+goblin = {version = "0.6", default-features = false, features = ["elf32", "elf64", "endian_fd"]}
+lib = {path = "../lib", features = ["uefi-feature"]}
+uefi = {version = "0.19.0", features = ["alloc", "logger"]}
 uefi-services = "0.16.0"
-goblin = { version = "0.6", features = ["elf32", "elf64", "endian_fd"], default-features = false }

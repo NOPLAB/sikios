@@ -89,6 +89,18 @@ unsafe impl GlobalAlloc for SimpleAlloc {
         // print_serial(_s);
         // ptr
 
+        let mut buf = [0u8; 256];
+        let _s: &str = write_to::show(
+            &mut buf,
+            format_args!(
+                "layout.size: {}, layout.align: {:0x}\n",
+                layout.size(),
+                layout.align()
+            ),
+        )
+        .unwrap();
+        print_serial(_s);
+
         (self
             .memory_frame
             .get()
