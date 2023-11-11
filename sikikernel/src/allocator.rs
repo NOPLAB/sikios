@@ -180,7 +180,7 @@ impl MemoryFrame {
 
     pub fn use_frame_with_physical_size(&mut self, size: usize) -> Result<usize, &'static str> {
         // 必要なフレーム数をメモリサイズから計算
-        let need_frame_size = size.div_ceil(&self.once_frame_size);
+        let need_frame_size = size.div_ceil(self.once_frame_size);
 
         let mut buf = [0u8; 256];
         let _s: &str = write_to::show(
@@ -221,7 +221,7 @@ impl MemoryFrame {
 
         // フレームのインデックスとサイズをメモリサイズから計算
         let frame_index = (addr - self.offset) / self.once_frame_size;
-        let frame_size = size.div_ceil(&self.once_frame_size);
+        let frame_size = size.div_ceil(self.once_frame_size);
 
         self.free_frame(frame_index, frame_size);
     }

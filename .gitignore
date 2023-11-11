@@ -18,3 +18,5 @@ disk.img
 .DS_Store
 
 kernel.elf
+
+/mnt

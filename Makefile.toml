@@ -3,7 +3,7 @@ default_to_workspace = false
 skip_core_tasks = true
 
 [env]
-OVMF_DIR = "/Users/nop/ovmf"
+OVMF_PATH = "/usr/share/ovmf/OVMF.fd"
 
 [tasks.build]
 dependencies = [
@@ -38,19 +38,20 @@ run_task = {name = ["disk-rm", "disk-create", "disk-mount", "disk-copy"], fork =
 [tasks.disk-rm]
 ignore_errors = true
 script = '''
+echo disk-rm
 rm disk.img
 '''
 
 [tasks.disk-create]
 script = '''
-echo "disk-create"
+echo disk-create
 qemu-img create -f raw disk.img 200M
-mkfs.fat -n "sikikernel" -s 2 -f 2 -F 32 -R 32 disk.img
+mkfs.fat -n "SIKIKERNEL" -s 2 -f 2 -F 32 -R 32 disk.img
 '''
 
 [tasks.disk-mount.linux]
 script = '''
-echo "disk-mount.linux"
+echo disk-mount.linux
 mkdir -p ./mnt
 sudo mount -o loop disk.img ./mnt
 '''
@@ -58,14 +59,20 @@ sudo mount -o loop disk.img ./mnt
 [tasks.disk-mount.mac]
 script = '''
 #!/usr/bin/env bash
-echo "disk-mount.mac"
+echo disk-mount.mac
 mkdir -p ./mnt
 disk=$(hdiutil attach -nomount disk.img)
-echo $disk
 mount_msdos $disk ./mnt
 '''
 
-[tasks.disk-copy]
+[tasks.disk-copy.linux]
+script = '''
+sudo mkdir -p ./mnt/EFI/BOOT
+sudo cp ./target/x86_64-unknown-uefi/debug/sikiloader.efi ./mnt/EFI/BOOT/BOOTX64.EFI
+sudo cp ./kernel.elf ./mnt/kernel.elf
+'''
+
+[tasks.disk-copy.mac]
 script = '''
 mkdir -p ./mnt/EFI/BOOT
 cp ./target/x86_64-unknown-uefi/debug/sikiloader.efi ./mnt/EFI/BOOT/BOOTX64.EFI
@@ -77,8 +84,7 @@ dependencies = ["disk"]
 script = '''
 qemu-system-x86_64 \
     -m 1G \
-    -drive if=pflash,format=raw,file=${OVMF_DIR}/OVMF_CODE.fd \
-    -drive if=pflash,format=raw,file=${OVMF_DIR}/OVMF_VARS.fd \
+    -bios ${OVMF_PATH} \
     -drive format=raw,media=disk,index=0,file=disk.img \
     -device nec-usb-xhci,id=xhci \
     -device usb-mouse -device usb-kbd \
@@ -92,7 +98,7 @@ dependencies = ["disk"]
 script = '''
 qemu-system-x86_64 \
     -m 1G \
-    -bios ${OVMF_DIR}/OVMF.fd \
+    -bios ${OVMF_PATH} \
     -drive format=raw,media=disk,index=0,file=disk.img \
     -device nec-usb-xhci,id=xhci \
     -device usb-mouse -device usb-kbd \
@@ -105,7 +111,7 @@ qemu-system-x86_64 \
 # script = '''
 # qemu-system-x86_64 \
 #     -m 1G \
-#     -bios ${OVMF_DIR}/OVMF.fd \
+#     -bios ${OVMF_PATH}/OVMF.fd \
 #     -drive format=raw,media=disk,index=0,file=disk.img \
 #     -device nec-usb-xhci,id=xhci \
 #     -device usb-mouse -device usb-kbd \
@@ -113,9 +119,17 @@ qemu-system-x86_64 \
 #     -monitor stdio \
 # '''
 
-[tasks.disk-umount]
+
+[tasks.disk-umount.linux]
 ignore_errors = true
 script = '''
-umount ./mnt && rmdir ./mnt
+sudo umount ./mnt && rm -r ./mnt
+hdiutil detach /dev/disk4
+'''
+
+[tasks.disk-umount.mac]
+ignore_errors = true
+script = '''
+umount ./mnt && rm -r ./mnt
 hdiutil detach /dev/disk4
 '''
