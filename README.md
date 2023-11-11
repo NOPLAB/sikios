@@ -1,18 +1,25 @@
 # What is this?
 
-This is toy OS for study.
+This is toy OS to study.
 
 Rust 100% (At this point...)
 
 # How to Build?
 
 I'm working on build system, so it is not possible to build at this time.
-Building on MacOS is tentatively possible.
 
-Build
+This project is using `sagiegurari/cargo-make` to build.
 
-`$ cargo make build`
+## Before Run
 
-Build and Run
+If you are not installed `sagiegurari/cargo-make`, you can install.
 
-`$ cargo make run`
+```bash
+cargo install --force cargo-make
+```
+
+## Run
+
+```bash
+cargo make run
+```
