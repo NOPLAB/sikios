@@ -1,16 +1,18 @@
-# What is this?
+# sikios
+
+## What is this?
 
 This is toy OS to study.
 
 Rust 100% (At this point...)
 
-# How to Build?
+## How to Build?
 
 I'm working on build system, so it is not possible to build at this time.
 
 This project is using `sagiegurari/cargo-make` to build.
 
-## Before Run
+### Before Run
 
 If you are not installed `sagiegurari/cargo-make`, you can install.
 
@@ -18,8 +20,10 @@ If you are not installed `sagiegurari/cargo-make`, you can install.
 cargo install --force cargo-make
 ```
 
-## Run
+### Run
 
 ```bash
+export OVMF_PATH = "/usr/share/ovmf/OVMF.fd"
+
 cargo make run
 ```
