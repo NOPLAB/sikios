@@ -8,16 +8,16 @@ skip_core_tasks = true
 [tasks.build]
 dependencies = [
   # {name = "build", path = "lib"},
-  {name = "build", path = "sikikernel"},
-  {name = "build", path = "sikiloader"},
+  { name = "build", path = "sikikernel" },
+  { name = "build", path = "sikiloader" },
 ]
 run_task = "disk"
 
 [tasks.check]
 dependencies = [
   # {name = "check", path = "lib"},
-  {name = "check", path = "sikikernel"},
-  {name = "check", path = "sikiloader"},
+  { name = "check", path = "sikikernel" },
+  { name = "check", path = "sikiloader" },
 ]
 run_task = "disk"
 
@@ -27,13 +27,19 @@ run_task = "qemu"
 
 [tasks.clean]
 dependencies = [
-  {name = "clean", path = "lib"},
-  {name = "clean", path = "sikikernel"},
-  {name = "clean", path = "sikiloader"},
+  { name = "clean", path = "lib" },
+  { name = "clean", path = "sikikernel" },
+  { name = "clean", path = "sikiloader" },
 ]
 
 [tasks.disk]
-run_task = {name = ["disk-rm", "disk-create", "disk-mount", "disk-copy"], fork = true, cleanup_task = "disk-umount"}
+run_task = { name = [
+  "disk-rm",
+  "disk-create",
+  "disk-mount",
+  "disk-copy",
+  "disk-umount",
+], fork = true }
 
 [tasks.disk-rm]
 ignore_errors = true
@@ -79,6 +85,21 @@ cp ./target/x86_64-unknown-uefi/debug/sikiloader.efi ./mnt/EFI/BOOT/BOOTX64.EFI
 cp ./kernel.elf ./mnt/kernel.elf
 '''
 
+[tasks.disk-umount.linux]
+ignore_errors = true
+script = '''
+sudo umount ./mnt
+sudo rm -r ./mnt
+'''
+
+[tasks.disk-umount.mac]
+ignore_errors = true
+script = '''
+umount ./mnt
+rm -r ./mnt
+hdiutil detach /dev/disk4
+'''
+
 [tasks.qemu]
 dependencies = ["disk"]
 script = '''
@@ -89,8 +110,7 @@ qemu-system-x86_64 \
     -device nec-usb-xhci,id=xhci \
     -device usb-mouse -device usb-kbd \
     -device isa-debug-exit \
-    -monitor stdio \
-    -display gtk
+    -serial stdio \
 '''
 
 [tasks.qemu.mac]
@@ -118,17 +138,3 @@ qemu-system-x86_64 \
 #     -device isa-debug-exit \
 #     -monitor stdio \
 # '''
-
-[tasks.disk-umount.linux]
-ignore_errors = true
-script = '''
-sudo umount ./mnt && rm -r ./mnt
-hdiutil detach /dev/disk4
-'''
-
-[tasks.disk-umount.mac]
-ignore_errors = true
-script = '''
-umount ./mnt && rm -r ./mnt
-hdiutil detach /dev/disk4
-'''

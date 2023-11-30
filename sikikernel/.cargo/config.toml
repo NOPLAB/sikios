@@ -1,7 +1,7 @@
 [build]
-# target = ["x86_64-unknown-none"]
-# rustflags = ["-C", "link-args=--entry _kernel_main -z norelro --image-base 0x100000 --static -okernel.elf"]
+# target = "x86_64-unknown-none"
 target = "x86_64-unknown-none-os.json"
+# rustflags = ["-Crelocation-model=static", "-Clink-args=-okernel.elf"]
 
 # [profile.dev]
 # panic = "abort"

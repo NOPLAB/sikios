@@ -114,14 +114,14 @@ fn load_file(dir: &mut Directory, file_name: &uefi::CStr16) -> RegularFile {
 }
 
 fn entry_kernel(entry: u64, args: &SikiOSArguments) {
-    let _kernel_main: extern "sysv64" fn(args: &SikiOSArguments) = unsafe { mem::transmute(entry) };
+    let _start: extern "sysv64" fn(args: &SikiOSArguments) = unsafe { mem::transmute(entry) };
 
     println!("Exit Boot Services");
     exit_boot_services();
 
     println!("Enter Entry Point");
 
-    _kernel_main(args);
+    _start(args);
 }
 
 #[entry]
@@ -137,7 +137,7 @@ fn main(handle: Handle, mut system_table: SystemTable<Boot>) -> Status {
     let memory_map_size = get_memory_map_size(boot_services).map_size;
     print!("Memory Map Size: {}\n", memory_map_size + 1024);
     // let mut memory_map_buffer = vec![0 as u8; memory_map_size + 1024];
-    let mut memory_map_buffer = [0 as u8; 4000];
+    let mut memory_map_buffer = [0 as u8; 10240];
     let memory_map_iter = get_memory_map(boot_services, &mut memory_map_buffer);
     print_memory_map(&memory_map_iter);
     save_memory_map(&memory_map_iter, &mut root_dir);
@@ -150,7 +150,7 @@ fn main(handle: Handle, mut system_table: SystemTable<Boot>) -> Status {
     let elf_file_info = elf_file.get_boxed_info::<FileInfo>().unwrap();
     let elf_file_size = elf_file_info.file_size() as usize;
 
-    println!("Kernel File Size: {}", elf_file_size);
+    println!("Kernel File Size: 0x{:x}", elf_file_size);
 
     // バッファを作成
     let mut elf_buffer = vec![0; elf_file_size];
@@ -176,7 +176,7 @@ fn main(handle: Handle, mut system_table: SystemTable<Boot>) -> Status {
     let n_of_pages = (load_size + 0xfff) / 0x1000;
 
     println!(
-        "kernel first: {}, last: {}, pages: {}",
+        "Kernel first: 0x{:x}, last: 0x{:x}, pages: {}",
         dest_first, dest_last, n_of_pages
     );
 
@@ -189,7 +189,7 @@ fn main(handle: Handle, mut system_table: SystemTable<Boot>) -> Status {
         )
         .unwrap();
 
-    println!("kernel physical addr: {}", _kernel_physical_addr);
+    println!("Kernel physical addr: 0x{:x}", _kernel_physical_addr);
 
     // 内容をコピー
     for ph in elf.program_headers.iter() {
@@ -204,7 +204,7 @@ fn main(handle: Handle, mut system_table: SystemTable<Boot>) -> Status {
         dest[fsize..].fill(0);
     }
 
-    println!("Entry Point: {}", elf.entry);
+    println!("Entry Point: 0x{:x}", elf.entry);
 
     // let _gop_handle = _boot_services
     //     .get_handle_for_protocol::<GraphicsOutput>()

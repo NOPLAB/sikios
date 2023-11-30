@@ -1,6 +1,3 @@
 [workspace]
-members = [
-  "sikikernel",
-  "sikiloader",
-  "lib",
-]
+resolver = "2"
+members = ["sikikernel", "sikiloader", "lib"]

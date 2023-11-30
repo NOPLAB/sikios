@@ -1,7 +1,7 @@
 #![crate_type = "lib"]
 #![no_std]
 
-pub const MEMORY_MAP_SIZE: usize = 100;
+pub const MEMORY_MAP_SIZE: usize = 1024;
 
 #[repr(C)]
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]

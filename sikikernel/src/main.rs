@@ -56,8 +56,9 @@ fn panic(_info: &PanicInfo) -> ! {
     }
 }
 
-#[no_mangle] // don't mangle the name of this function
-pub extern "sysv64" fn _kernel_main(args: &SikiOSArguments) -> ! {
+// #[no_mangle] // don't mangle the name of this function
+#[export_name = "_start"]
+pub extern "sysv64" fn _start(args: &SikiOSArguments) -> ! {
     let mut graphics = Graphics {
         frame_buffer_info: args.frame_buffer_info,
         mode_info: args.mode_info,
@@ -76,7 +77,7 @@ pub extern "sysv64" fn _kernel_main(args: &SikiOSArguments) -> ! {
     graphics.draw_rect(0, 0, width, height, Color(0, 0, 0));
 
     graphics.draw_rect(10, 10, 20, 20, Color(255, 255, 255));
-    graphics.draw_fonts(40, 40, "Hello, World", Color(255, 0, 255));
+    graphics.draw_fonts(40, 40, "Hello, World", Color(0, 0, 255));
 
     for i in 0..args.memory_map.len {
         let mut buf = [0u8; 256];
